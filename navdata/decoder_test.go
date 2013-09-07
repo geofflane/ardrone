@@ -19,21 +19,23 @@ func ExampleDecoder_Decode_Ok() {
 	fmt.Print(string(json))
 
 	// Output:
-	// {
-	// 	"Header": {
-	// 		"Tag": 1432778632,
-	// 		"State": 1333788880,
-	// 		"SequenceNumber": 300711,
-	// 		"VisionFlag": 1
-	// 	},
-	// 	"Demo": {
-	// 		"FlyState": 0,
-	// 		"ControlState": 2,
-	// 		"Battery": 50,
-	// 		"Altitude": 0
-	// 	},
-	//	"Checksum": 36358
-	// }
+  // {
+  // 	"Header": {
+  // 		"Tag": 1432778632,
+  // 		"State": 1333788880,
+  // 		"SequenceNumber": 300711,
+  // 		"VisionFlag": 1
+  // 	},
+  // 	"Demo": {
+  // 		"FlyState": 0,
+  // 		"ControlState": 2,
+  // 		"Battery": 50,
+  // 		"ClockSpin": 1933,
+  // 		"Altitude": 0,
+  // 		"UpDown": 0
+  // 	},
+  // 	"Checksum": 36358
+  // }
 }
 
 func ExampleDecoder_Decode_ErrUnknownHeaderTag() {
