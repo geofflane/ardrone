@@ -58,6 +58,7 @@ type Client struct {
 
 	stateLock sync.Mutex
 	state     State
+  shutdown chan bool
 
 	Navdata chan *navdata.Navdata // @TODO: make read-only
 }
@@ -104,6 +105,7 @@ func (client *Client) Connect() error {
 	client.commands = &commands.Sequence{}
 
 	client.Navdata = make(chan *navdata.Navdata, 0)
+  client.shutdown = make(chan bool)
 
 	go client.sendLoop()
 	go client.navdataLoop()
@@ -134,6 +136,12 @@ func (client *Client) Connect() error {
 	return nil
 }
 
+func (client *Client) Abort() {
+  log.Println("Aborting! Land!")
+  client.shutdown <- true
+  client.Land()
+}
+
 func (client *Client) Animate(id AnimationId, arg int) {
 	val := fmt.Sprintf("%d,%d", id, arg)
 	config := KeyVal{Key: "control:flight_anim", Value: val}
@@ -150,6 +158,9 @@ func (client *Client) Takeoff() {
 			if data.Demo.ControlState == navdata.CONTROL_HOVERING {
 				return
 			}
+    // In case someone wants to abort during takeoff, we need a way to break out of this loop
+    case _ = <-client.shutdown:
+      return
 		}
 	}
 }
