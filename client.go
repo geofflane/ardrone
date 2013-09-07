@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"github.com/felixge/ardrone/commands"
 	"github.com/felixge/ardrone/navdata"
+	"github.com/felixge/ardrone/viddata"
 	"log"
 	"net"
 	"sync"
 	"time"
+  "os"
+  "bytes"
 )
 
 type State struct {
@@ -55,6 +58,7 @@ type Client struct {
 	navdataConn *navdata.Conn
 	commands    *commands.Sequence
 	controlConn net.Conn
+  viddataConn net.Conn
 
 	stateLock sync.Mutex
 	state     State
@@ -65,17 +69,25 @@ type Client struct {
 
 type Config struct {
 	Ip             string
+	VideoRecorderPort    int
 	NavdataPort    int
 	AtPort         int
+  VideoPort      int
+  RawCapturePort int
 	NavdataTimeout time.Duration
+	ViddataTimeout time.Duration
 }
 
 func DefaultConfig() Config {
 	return Config{
 		Ip:             "192.168.1.1",
+		VideoRecorderPort: 5553,
 		NavdataPort:    5554,
+    VideoPort:      5555,
 		AtPort:         5556,
+    RawCapturePort: 5557,
 		NavdataTimeout: 2000 * time.Millisecond,
+		ViddataTimeout: 2000 * time.Millisecond,
 	}
 }
 
@@ -85,7 +97,7 @@ func Connect(config Config) (*Client, error){
 }
 
 func (client *Client) Connect() error {
-	navdataAddr := addr(client.Config.Ip, client.Config.NavdataPort)
+	navdataAddr := addr(client.Config.Ip, client.Config.VideoPort)
 	navdataConn, err := navdata.Dial(navdataAddr)
 	if err != nil {
 		return err
@@ -96,7 +108,6 @@ func (client *Client) Connect() error {
 
 	controlAddr := addr(client.Config.Ip, client.Config.AtPort)
 	controlConn, err := net.Dial("udp", controlAddr)
-
 	if err != nil {
 		return err
 	}
@@ -104,11 +115,21 @@ func (client *Client) Connect() error {
 	client.controlConn = controlConn
 	client.commands = &commands.Sequence{}
 
+  viddataAddr := addr(client.Config.Ip, client.Config.VideoPort)
+  viddataConn, err := net.Dial("tcp", viddataAddr)
+  if err != nil {
+    return err
+  }
+
+  client.viddataConn = viddataConn
+	// client.viddataConn.SetTimeout(client.Config.ViddataTimeout)
+
 	client.Navdata = make(chan *navdata.Navdata, 0)
   client.shutdown = make(chan bool)
 
 	go client.sendLoop()
 	go client.navdataLoop()
+  go client.viddataLoop()
 
 	// disable emergency mode (if on) and request demo navdata from drone.
 	for {
@@ -256,6 +277,21 @@ func (client *Client) navdataLoop() {
 	}
 }
 
+func (client *Client) viddataLoop() {
+  for {
+
+    pave, err := viddata.Decode(client.viddataConn)
+    if err != nil {
+			log.Printf("vid error: %s\n", err)
+      continue;
+    }
+    var b bytes.Buffer // A Buffer needs no initialization.
+    b.Write(pave.Payload)
+	  b.WriteTo(os.Stdout)
+  }
+}
+
 func addr(ip string, port int) string {
 	return fmt.Sprintf("%s:%d", ip, port)
 }
+
