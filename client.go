@@ -63,11 +63,7 @@ type Client struct {
   state     State
   shutdown chan bool
 
-<<<<<<< HEAD
-	Navdata chan *navdata.Navdata // @TODO: make read-only
-=======
   Navdata chan *navdata.Navdata // @TODO: make read-only
->>>>>>> Add the ability to decode video. Current client implementation sucks.
   Viddata chan *viddata.PaVE
 }
 
@@ -128,13 +124,8 @@ func (client *Client) Connect() error {
   client.viddataConn = viddataConn
   // client.viddataConn.SetTimeout(client.Config.ViddataTimeout)
 
-<<<<<<< HEAD
-	client.Navdata = make(chan *navdata.Navdata, 0)
-	client.Viddata = make(chan *viddata.PaVE)
-=======
   client.Navdata = make(chan *navdata.Navdata, 0)
   client.Viddata = make(chan *viddata.PaVE)
->>>>>>> Add the ability to decode video. Current client implementation sucks.
   client.shutdown = make(chan bool)
 
   go client.sendLoop()
