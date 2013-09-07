@@ -4,11 +4,13 @@ import (
   "net"
   "bytes"
   "encoding/binary"
+  "fmt"
+  "os"
+  "io"
 )
-
 type PaVE struct {
   Header PaVEHeader
-  Payload Payload
+  Payload []byte
 }
 
 type PaVEHeader struct {
@@ -20,7 +22,7 @@ type PaVEHeader struct {
   EncodedStreamWidth    uint16
   EncodedStreamHeight   uint16
   DisplayWidth          uint16
-  DisplayHeight         uint16
+  DisplayHeight         uint16 // 20
   FrameNumber           uint32
   Timestamp             uint32
   TotalChunks           uint8
@@ -28,7 +30,7 @@ type PaVEHeader struct {
   FrameType             uint8
   Control               uint8
   StreamBytePositionLw  uint32
-  StreamBytePositionUw  uint32
+  StreamBytePositionUw  uint32 // 40
   StreamId              uint16
   TotalSlices           uint8
   SliceIndex            uint8
@@ -38,14 +40,15 @@ type PaVEHeader struct {
   AdvertisedSize        uint32
   Reserved3_1           uint32 // 12 bytes
   Reserved3_2           uint32
-  Reserved3_3           uint32
+  Reserved3_3           uint32 // 64
+  Reserved3_4           uint32
+  Reserved3_5           uint32
+  Reserved3_6           uint32
 }
-
-type Payload []byte
 
 // Decode blocks until the next video packets becomes available, which
 // it then parses and returns.
-func Decode(con net.Conn) (paveData *PaVE, err error) {
+func Decode(con net.Conn) (pave *PaVE, err error) {
 	// readOrPanic() panics, while not expected, should not propagate to the
 	// caller, so we return them like regular errors instead.
 	defer func() {
@@ -54,22 +57,24 @@ func Decode(con net.Conn) (paveData *PaVE, err error) {
 		}
 	}()
 
-  buf := make([]byte, 68)
+  buf := make([]byte, 76)
   _, err = con.Read(buf)
   if nil != err {
-    panic("at the disco")
+    panic(err)
   }
 
-  paveData = &PaVE{}
+  pave = &PaVE{}
 	reader := bytes.NewReader(buf)
-	readOrPanic(reader, &paveData.Header)
+	readOrPanic(reader, &pave.Header)
 
-  buf2 := make([]byte, paveData.Header.PayloadSize)
-  _, err = con.Read(buf2)
+  fmt.Fprintf(os.Stderr, "Header: %v, Payload: %v\n", pave.Header.HeaderSize, pave.Header.PayloadSize)
+  buf2 := make([]byte, pave.Header.PayloadSize)
+  _, err = io.ReadFull(con, buf2)
   if nil != err {
-    panic("at the disco 2")
+    panic(err)
   }
-  paveData.Payload = Payload(buf2)
+  pave.Payload = buf2
+
 	return
 }
 

@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
   "os"
-  "bytes"
 )
 
 type State struct {
@@ -65,6 +64,7 @@ type Client struct {
   shutdown chan bool
 
 	Navdata chan *navdata.Navdata // @TODO: make read-only
+  Viddata chan *viddata.PaVE
 }
 
 type Config struct {
@@ -125,6 +125,7 @@ func (client *Client) Connect() error {
 	// client.viddataConn.SetTimeout(client.Config.ViddataTimeout)
 
 	client.Navdata = make(chan *navdata.Navdata, 0)
+	client.Viddata = make(chan *viddata.PaVE)
   client.shutdown = make(chan bool)
 
 	go client.sendLoop()
@@ -278,16 +279,20 @@ func (client *Client) navdataLoop() {
 }
 
 func (client *Client) viddataLoop() {
-  for {
+  f, err := os.Create("/Users/geoff/drone/golang/src/github.com/geofflane/release-the-drones/viddata.h264")
+  if nil != err {
+    panic("Can't create file")
+  }
+  defer f.Close()
 
+  for {
     pave, err := viddata.Decode(client.viddataConn)
     if err != nil {
 			log.Printf("vid error: %s\n", err)
       continue;
     }
-    var b bytes.Buffer // A Buffer needs no initialization.
-    b.Write(pave.Payload)
-	  b.WriteTo(os.Stdout)
+
+    f.Write(pave.Payload)
   }
 }
 
